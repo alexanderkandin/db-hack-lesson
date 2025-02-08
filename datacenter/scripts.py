@@ -16,27 +16,41 @@ def get_full_name(full_name):
 
 def remove_chastisements(full_name):
     kid_id = get_full_name(full_name)
+    if not kid_id:
+        return f"Ошибка: ученик '{full_name}' не найден."
+
     chastisements = Chastisement.objects.filter(schoolkid=kid_id)
-    chastisements.delete()
-    return f"Удалено {len(chastisements)} замечаний."
+    count, _ = chastisements.delete()
+    return f"Удалено {count} замечаний."
 
 
 def create_commendation(full_name,subject,group_letter):
     kid_id = get_full_name(full_name)
+    if not kid_id:
+        return f"Ошибка: ученик '{full_name}' не найден."
+
     year_of_study = kid_id.year_of_study
-    subject = Subject.objects.filter(title=subject,year_of_study=year_of_study).first()
+    subject_obj = Subject.objects.filter(title=subject,year_of_study=year_of_study).first()
+
+    if not subject_obj:
+        return f"Ошибка: предмет '{subject}' не найден для {year_of_study} класса {group_letter}."
     lesson = Lesson.objects.filter(
-        subject=subject,
+        subject=subject_obj,
         year_of_study = year_of_study,
         group_letter = group_letter,
     ).first()
+
+
+    if not lesson:
+        return f"Ошибка: урок по предмету '{subject}' для {year_of_study}{group_letter} не найден."
+
     teacher = lesson.teacher
     today = datetime.date.today()
     commendation = Commendation.objects.create(
         text="Хвалю!",
         created=today,  # Указываем текущую дату
         schoolkid=kid_id,
-        subject=subject,  # Используем предмет из урока
+        subject=subject_obj,  # Используем предмет из урока
         teacher=teacher  # Используем учителя из урока
     )
 
@@ -45,8 +59,9 @@ def create_commendation(full_name,subject,group_letter):
 
 def fix_marks(full_name):
     kid_id = get_full_name(full_name)
-    childs = Mark.objects.filter(schoolkid=kid_id, points__lt=4)
-    for child in childs:
-        child.points = 5
-        child.save()
+    if not kid_id:
+        return f"Ошибка: ученик '{full_name}' не найден."
+
+    Mark.objects.filter(schoolkid=kid_id, points__lt=4).update(points=5)
+
     return f"Оценки исправлены."
